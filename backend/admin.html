@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel — FixMyRoad BN</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Import public site styles so popup classes match exactly -->
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div class="login-overlay" id="login-overlay">
+    <div class="login-blobs">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+    </div>
+    <div class="login-card">
+      <div class="login-logo">
+        <span class="login-logo-icon">🛣️</span>
+        <div>
+          <div class="login-logo-title">FixMyRoad <span class="login-bn">BN</span></div>
+          <div class="login-logo-sub">Admin Control Panel</div>
+        </div>
+      </div>
+
+      <form id="login-form" autocomplete="off">
+        <div class="login-field">
+          <label for="admin-user">Username</label>
+          <div class="login-input-wrap">
+            <span class="login-input-icon">👤</span>
+            <input type="text" id="admin-user" placeholder="Enter admin username" autocomplete="off" />
+          </div>
+        </div>
+        <div class="login-field">
+          <label for="admin-pass">Password</label>
+          <div class="login-input-wrap">
+            <span class="login-input-icon">🔒</span>
+            <input type="password" id="admin-pass" placeholder="••••••••" autocomplete="off" />
+          </div>
+        </div>
+        <div class="login-error hidden" id="login-error">❌ Invalid credentials. Please try again.</div>
+        <button type="submit" class="login-btn" id="login-btn">
+          <span id="login-btn-text">Login to Admin Panel</span>
+          <div class="login-spinner hidden" id="login-spinner"></div>
+        </button>
+      </form>
+
+      <p class="login-footer">🔒 Secured Admin Access · FixMyRoad BN</p>
+    </div>
+  </div>
+
+  <!-- ===== ADMIN DASHBOARD ===== -->
+  <div class="admin-shell hidden" id="admin-shell">
+
+    <!-- TOP BAR -->
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <span class="admin-brand-icon">🛣️</span>
+        <span class="admin-brand-name">FixMyRoad <span class="admin-bn">BN</span></span>
+        <span class="admin-badge">Admin Panel</span>
+      </div>
+      <div class="admin-topbar-center">
+        <div class="admin-stat-pill" id="stat-total-pill">
+          <span class="pill-label">Total</span>
+          <span class="pill-val" id="stat-total">–</span>
+        </div>
+        <div class="admin-stat-pill pill-open" id="stat-open-pill">
+          <span class="pill-label">Open</span>
+          <span class="pill-val" id="stat-open">–</span>
+        </div>
+        <div class="admin-stat-pill pill-progress" id="stat-progress-pill">
+          <span class="pill-label">In Progress</span>
+          <span class="pill-val" id="stat-inprogress">–</span>
+        </div>
+        <div class="admin-stat-pill pill-resolved">
+          <span class="pill-label">Resolved</span>
+          <span class="pill-val" id="stat-resolved">–</span>
+        </div>
+      </div>
+      <div class="admin-topbar-right">
+        <a href="index.html" class="admin-back-link">← Back to Site</a>
+        <button class="admin-logout-btn" id="admin-logout">Logout</button>
+      </div>
+    </header>
+
+    <!-- MAIN LAYOUT -->
+    <div class="admin-body">
+
+      <!-- LEFT: MAP -->
+      <div class="admin-map-pane" id="admin-map-pane">
+        <div id="admin-map-loading" class="admin-map-loader">
+          <div class="admin-spinner"></div>
+          <p>Loading map…</p>
+        </div>
+        <div id="admin-map"></div>
+      </div>
+
+      <!-- RIGHT: SIDEBAR -->
+      <div class="admin-sidebar">
+
+        <!-- FILTER BAR -->
+        <div class="admin-filter-bar">
+          <div class="filter-pill-group" id="status-filter-group">
+            <button class="filter-pill active" data-status="all">All</button>
+            <button class="filter-pill" data-status="Open">Open</button>
+            <button class="filter-pill" data-status="In Progress">In Progress</button>
+            <button class="filter-pill" data-status="Resolved">Resolved</button>
+          </div>
+          <div class="admin-search-wrap">
+            <span class="admin-search-icon">🔍</span>
+            <input type="text" id="admin-search" placeholder="Search location, type…" />
+          </div>
+        </div>
+
+        <!-- REPORT LIST -->
+        <div class="admin-report-list" id="admin-report-list">
+          <div class="admin-list-empty">Loading reports…</div>
+        </div>
+
+        <!-- EDIT PANEL -->
+        <div class="admin-edit-panel hidden" id="admin-edit-panel">
+          <div class="edit-panel-header">
+            <div class="edit-panel-title">
+              <span id="edit-type-icon">⚠️</span>
+              <div>
+                <div id="edit-type-name" class="edit-title-type">—</div>
+                <div id="edit-location" class="edit-title-loc">—</div>
+              </div>
+            </div>
+            <button class="edit-close-btn" id="edit-close">✕</button>
+          </div>
+
+          <div class="edit-panel-body">
+            <input type="hidden" id="edit-report-id" />
+
+            <div class="edit-row">
+              <div class="edit-field">
+                <label for="edit-severity">Severity</label>
+                <select id="edit-severity">
+                  <option value="Low">🟢 Low</option>
+                  <option value="Medium">🟡 Medium</option>
+                  <option value="High">🔴 High</option>
+                  <option value="Critical">🚨 Critical</option>
+                </select>
+              </div>
+              <div class="edit-field">
+                <label for="edit-status">Status</label>
+                <select id="edit-status">
+                  <option value="Open">Open</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="edit-field">
+              <label for="edit-category">Category</label>
+              <select id="edit-category">
+                <option value="Pothole">🕳️ Pothole</option>
+                <option value="Broken Signage">⚠️ Broken Signage</option>
+                <option value="Damaged Drain Cover">🔩 Damaged Drain Cover</option>
+                <option value="Faded Road Markings">🛤️ Faded Road Markings</option>
+              </select>
+            </div>
+
+            <div class="edit-actions">
+              <button class="edit-btn edit-save-btn" id="edit-save">
+                <span>💾 Save Changes</span>
+              </button>
+              <button class="edit-btn edit-delete-btn" id="edit-delete">
+                <span>🗑️ Delete Report</span>
+              </button>
+            </div>
+
+            <div class="edit-feedback hidden" id="edit-feedback"></div>
+          </div>
+        </div>
+
+      </div><!-- /admin-sidebar -->
+    </div><!-- /admin-body -->
+  </div><!-- /admin-shell -->
+
+  <!-- PHOTO LIGHTBOX (matches public site) -->
+  <div class="lightbox-modal" id="admin-lightbox">
+    <button class="lightbox-close" id="admin-lightbox-close">✕</button>
+    <div class="lightbox-content">
+      <img id="admin-lightbox-img" src="" alt="Enlarged Report Photo">
+      <div class="lightbox-caption" id="admin-lightbox-caption"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
