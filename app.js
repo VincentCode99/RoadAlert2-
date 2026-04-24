@@ -22,6 +22,7 @@ const translations = {
     btn_view_map: '🗺️ View Reports Map',
     lang_toggle: '🇲🇾 BM',
 
+    nav_logout: 'Logout',
     // Report Page
     report_page_title: '📍 Submit a Report',
     report_page_subtitle: 'Help us fix Brunei\'s roads by submitting a damage report below.',
@@ -66,6 +67,7 @@ const translations = {
     btn_view_map: '🗺️ Lihat Peta Laporan',
     lang_toggle: '🇬🇧 EN',
 
+    nav_logout: 'Log Keluar',
     // Report Page
     report_page_title: '📍 Hantar Laporan',
     report_page_subtitle: 'Bantu kami baiki jalan Brunei dengan menghantar laporan kerosakan di bawah.',
@@ -1069,12 +1071,29 @@ function initModernAuth() {
 function updateAuthUI() {
   const authBtn = document.getElementById('nav-auth');
   if (authBtn) {
-    authBtn.textContent = currentUser ? `Logout (${currentUser.username})` : 'Login';
+    if (currentUser) {
+      const logoutTxt = currentLang === 'en' ? 'Logout' : 'Log Keluar';
+      authBtn.textContent = `${logoutTxt} (${currentUser.username})`;
+      authBtn.removeAttribute('data-i18n'); // Prevent translation overwrite
+    } else {
+      authBtn.setAttribute('data-i18n', 'nav_login');
+      // Re-apply translation for the login button
+      const dict = translations[currentLang];
+      if (dict && dict.nav_login) authBtn.textContent = dict.nav_login;
+    }
+
     authBtn.onclick = (e) => {
       e.preventDefault();
       if (currentUser) {
-        if (confirm('Logout?')) { localStorage.removeItem('fixmyroad_user_v6'); currentUser = null; updateAuthUI(); showPage('home'); }
-      } else { showPage('auth'); }
+        if (confirm(currentLang === 'en' ? 'Logout?' : 'Log Keluar?')) {
+          localStorage.removeItem('fixmyroad_user_v6');
+          currentUser = null;
+          updateAuthUI();
+          showPage('home');
+        }
+      } else {
+        showPage('auth');
+      }
     };
   }
 }
