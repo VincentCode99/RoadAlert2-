@@ -36,10 +36,48 @@ async function initDB() {
       date TEXT,
       resolved_date TEXT
     );
+    CREATE TABLE IF NOT EXISTS users (
+      phone TEXT PRIMARY KEY,
+      username TEXT,
+      password TEXT
+    );
   `);
   console.log("✅ Database ready");
 }
 initDB();
+
+// ── AUTH ENDPOINTS ──
+
+app.post('/api/auth/signup', async (req, res) => {
+  const { username, phone, password } = req.body;
+  try {
+    const existing = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+    await pool.query('INSERT INTO users (username, phone, password) VALUES ($1, $2, $3)', [username, phone, password]);
+    res.json({ success: true, user: { username, phone } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const { phone, password } = req.body;
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const user = result.rows[0];
+    if (user.password !== password) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+    res.json({ success: true, user: { username: user.username, phone: user.phone } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET all reports
 app.get('/api/reports', async (req, res) => {

@@ -1011,7 +1011,6 @@ function initModernAuth() {
 
   if (tabLogin) tabLogin.onclick = () => setMode('login');
   if (tabSignup) tabSignup.onclick = () => setMode('signup');
-  if (document.getElementById('auth-switch-link')) document.getElementById('auth-switch-link').onclick = (e) => { e.preventDefault(); setMode('signup'); };
 
   if (authForm) {
     authForm.onsubmit = async (e) => {
@@ -1032,36 +1031,36 @@ function initModernAuth() {
       loader.classList.remove('hidden');
       authSubmitBtn.disabled = true;
 
-      setTimeout(() => {
+      try {
+        const endpoint = authMode === 'signup' ? '/auth/signup' : '/auth/login';
+        const body = authMode === 'signup' 
+          ? { username: user, phone: phone, password: pass }
+          : { phone: phone, password: pass };
+
+        const res = await fetch(API_BASE + endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
         loader.classList.add('hidden');
         authSubmitBtn.disabled = false;
 
-        // Strict Local DB Auth Logic
-        let usersDB = JSON.parse(localStorage.getItem('fmr_users_db') || '{}');
-
-        if (authMode === 'signup') {
-          if (usersDB[phone]) {
-            return alert('An account with this phone number already exists. Please login.');
-          }
-          usersDB[phone] = { username: user, pass: pass, phone: phone };
-          localStorage.setItem('fmr_users_db', JSON.stringify(usersDB));
-          currentUser = usersDB[phone];
-          alert('Account created successfully!');
+        if (data.success) {
+          currentUser = data.user;
+          localStorage.setItem('fixmyroad_user_v6', JSON.stringify(currentUser));
+          updateAuthUI();
+          showPage('home');
+          if (authMode === 'signup') alert('Account created successfully!');
         } else {
-          // Login
-          if (!usersDB[phone]) {
-            return alert('User not found. Please sign up first.');
-          }
-          if (usersDB[phone].pass !== pass) {
-            return alert('Incorrect password. Please try again.');
-          }
-          currentUser = usersDB[phone];
+          alert('❌ Auth Error: ' + (data.error || 'Unknown error'));
         }
-
-        localStorage.setItem('fixmyroad_user_v6', JSON.stringify(currentUser));
-        updateAuthUI();
-        showPage('home');
-      }, 1000);
+      } catch (err) {
+        loader.classList.add('hidden');
+        authSubmitBtn.disabled = false;
+        alert('❌ Connection Error: Could not reach authentication server.');
+      }
     };
   }
   updateAuthUI();
@@ -1690,6 +1689,7 @@ async function autoArchiveOldReports() {
   }
 
   applyTranslations();
+  updateAuthUI();
   updateStats();
   updateSyncUI();
   showPage('home');
