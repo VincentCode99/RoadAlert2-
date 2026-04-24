@@ -115,6 +115,10 @@ function applyTranslations() {
   const dict = translations[currentLang];
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
+    
+    // Skip updating nav-auth if user is logged in (to preserve username)
+    if (el.id === 'nav-auth' && currentUser) return;
+
     if (dict[key]) {
       el.innerHTML = dict[key];
     }
