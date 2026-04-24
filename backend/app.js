@@ -17,7 +17,7 @@ const translations = {
     hero_badge: '🇧🇳 Made for Brunei',
     hero_title1: 'Fix Our Roads,',
     hero_title2: 'Together.',
-    hero_subtitle: 'Spotted a pothole, crack, or dangerous road condition? Report it in seconds and help keep Brunei\'s roads safe for everyone.',
+    hero_subtitle: 'Spotted a pothole? Report it in seconds and help keep Brunei\'s roads safe for everyone.',
     btn_report_now: '📍 Report a Problem',
     btn_view_map: '🗺️ View Reports Map',
     lang_toggle: '🇲🇾 BM',
@@ -49,7 +49,7 @@ const translations = {
 
     // Home Stats
     top_types_title: 'Most Reported Issues',
-    top_types_subtitle: 'The top 3 common road problems in Brunei',
+    top_types_subtitle: 'The primary common road problem in Brunei',
     leaderboard_title: 'District Action Leaderboard ⚠️',
     leaderboard_subtitle: 'Districts with the most unresolved road issues.'
   },
@@ -61,7 +61,7 @@ const translations = {
     hero_badge: '🇧🇳 Buatan Brunei',
     hero_title1: 'Baiki Jalan Kita,',
     hero_title2: 'Bersama.',
-    hero_subtitle: 'Terjumpa lubang, rekahan, atau keadaan jalan yang bahaya? Lapor dalam beberapa saat dan bantu pastikan jalan Brunei selamat untuk semua.',
+    hero_subtitle: 'Terjumpa lubang jalan yang bahaya? Lapor dalam beberapa saat dan bantu pastikan jalan Brunei selamat untuk semua.',
     btn_report_now: '📍 Lapor Masalah',
     btn_view_map: '🗺️ Lihat Peta Laporan',
     lang_toggle: '🇬🇧 EN',
@@ -93,7 +93,7 @@ const translations = {
 
     // Home Stats
     top_types_title: 'Masalah Kerap Dilaporkan',
-    top_types_subtitle: '3 masalah jalan raya utama di Brunei',
+    top_types_subtitle: 'Masalah jalan raya utama di Brunei',
     leaderboard_title: 'Papan Pendahulu Tindakan Daerah ⚠️',
     leaderboard_subtitle: 'Daerah dengan bilangan isu jalan raya terbanyak yang belum diselesaikan.'
   }
@@ -822,8 +822,8 @@ initToggles();
 initMapFilters();
 
 function typeEmoji(type) {
-  const map = { 'Pothole': '🕳️', 'Broken Signage': '⚠️', 'Damaged Drain Cover': '🔩', 'Faded Road Markings': '🛤️' };
-  return map[type] || '⚠️';
+  const map = { 'Pothole': '🕳️' };
+  return map[type] || '🕳️';
 }
 
 function markerIcon(status, severity) {
@@ -1260,21 +1260,6 @@ const DAMAGE_KEYWORDS = {
     'pothole','hole','pit','crater','asphalt','pavement','gravel',
     'concrete','rubble','mud','ground','dirt','alley','sidewalk',
     'road','street','tarmac','cobblestone','wall','stone','volcano'
-  ],
-  'Broken Signage': [
-    'street sign','traffic sign','signboard','billboard','sign',
-    'traffic light','stoplight','pole','flagpole','mailbox',
-    'birdhouse','beacon','parking meter','fire hydrant','totem pole','street name'
-  ],
-  'Damaged Drain Cover': [
-    'manhole cover','manhole','grating','grille','iron','steel',
-    'chain mail','radiator','worm fence','mesh','screen',
-    'grid','grate','metal','drain','sewer','lid','sewerage'
-  ],
-  'Faded Road Markings': [
-    'pavement','asphalt','road','highway','street','runway',
-    'lane','crosswalk','zebra crossing','tennis court',
-    'basketball court','parking lot','concrete','sidewalk','stripe','marking','line'
   ]
 };
 
@@ -1393,24 +1378,6 @@ async function verifyDamageImage(img, reportType) {
     const hasDarkHole = bright.filter(v => v < 75).length / count > 0.05; // At least 5% is dark
     const roadBackground = bright.filter(v => v > 80 && v < 200).length / count > 0.40; // 40% is mid-gray
     pxPass = isGray && isRough && hasDarkHole && roadBackground;
-
-  } else if (reportType === 'Broken Signage') {
-    // Signage: Higher contrast, specific edge patterns
-    const hasContrast = stdDev > 15;
-    const hasBright = bright.filter(v => v > 180).length / count > 0.05;
-    pxPass = hasContrast && hasBright && avgSat < 0.45;
-
-  } else if (reportType === 'Damaged Drain Cover') {
-    // Metal: Gray, Low Sat, Very specific texture
-    const isMetalGray = Math.abs(avgR - avgG) < 20 && Math.abs(avgG - avgB) < 20;
-    const hasTexture = avgEdge > 6.0; // Very rough/patterned
-    pxPass = isMetalGray && hasTexture && avgBr < 170;
-
-  } else if (reportType === 'Faded Road Markings') {
-    // Markings: Gray background with white/yellow streaks
-    const isRoad = avgBr > 50 && avgBr < 180;
-    const hasMarkingPx = bright.filter(v => v > 160).length / count > 0.03;
-    pxPass = isRoad && hasMarkingPx && avgSat < 0.25;
   }
 
   // ─────────────────────────────────────────────────
