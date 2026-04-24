@@ -1603,7 +1603,7 @@ if (reportForm) {
       // Smart Merging Logic
       const existingReport = reports.find(r =>
         r.type === type &&
-        getDistance(pickedLat, pickedLng, r.lat, r.lng) < 100
+        getDistance(pickedLat, pickedLng, r.lat, r.lng) < 10
       );
 
       if (existingReport) {
