@@ -1395,30 +1395,27 @@ async function verifyDamageImage(img, reportType) {
 
   if (reportType === 'Pothole') {
     // Potholes: Grayish, Low Sat, Rough Texture, Local Dark Spots
-    const isGray = Math.abs(avgR - avgG) < 30 && Math.abs(avgG - avgB) < 30;
-    const isRough = avgEdge > 4.5; // High edge intensity for broken asphalt
-    const hasDarkHole = bright.filter(v => v < 75).length / count > 0.05; // At least 5% is dark
-    const roadBackground = bright.filter(v => v > 80 && v < 200).length / count > 0.40; // 40% is mid-gray
-    pxPass = isGray && isRough && hasDarkHole && roadBackground;
+    const isGray = Math.abs(avgR - avgG) < 20 && Math.abs(avgG - avgB) < 20;
+    const isRough = avgEdge > 7.0; // Higher threshold: Potholes have sharp edges and broken asphalt
+    const hasDarkHole = bright.filter(v => v < 60).length / count > 0.04; // Must have deep dark spots
+    const roadBackground = bright.filter(v => v > 80 && v < 200).length / count > 0.40; 
+    const highContrast = stdDev > 22; // Potholes cause higher variance than flat road
+    
+    pxPass = isGray && isRough && hasDarkHole && roadBackground && highContrast;
   }
 
-  // ─────────────────────────────────────────────────
-  // STAGE 3 — Contextual Logic
-  // ─────────────────────────────────────────────────
-  // If MobileNet is extremely confident, we can trust it more.
-  // Otherwise, pixel gates must be strictly enforced.
-  
-  if (mnScore > 0.8) return true; // High AI confidence
+  // High confidence override
+  if (mnScore > 0.85) return true; 
   
   if (!pxPass) {
-    console.log(`AI REJECT [${reportType}]: Pixel analysis failed. (Edge:${avgEdge.toFixed(1)} Sat:${avgSat.toFixed(2)})`);
+    console.log(`AI REJECT [${reportType}]: Pixel analysis failed. (Edge:${avgEdge.toFixed(1)} Var:${stdDev.toFixed(1)})`);
     return false;
   }
 
-  // Combined requirement
-  const confidence = (pxPass ? 0.5 : 0) + (mnScore * 0.5);
-  if (confidence < 0.4) {
-    console.log(`AI REJECT [${reportType}]: Low confidence score (${confidence.toFixed(2)})`);
+  // Combined requirement: Must have at least 15% AI confidence even if pixels look like a road
+  const confidence = (pxPass ? 0.6 : 0) + (mnScore * 0.4);
+  if (confidence < 0.65 || mnScore < 0.15) {
+    console.log(`AI REJECT [${reportType}]: Low confidence score (${confidence.toFixed(2)}) or AI mismatch (MN:${mnScore.toFixed(2)})`);
     return false;
   }
 
