@@ -1259,22 +1259,22 @@ const DAMAGE_KEYWORDS = {
   'Pothole': [
     'pothole','hole','pit','crater','asphalt','pavement','gravel',
     'concrete','rubble','mud','ground','dirt','alley','sidewalk',
-    'road','street','tarmac','cobblestone','wall','stone'
+    'road','street','tarmac','cobblestone','wall','stone','volcano'
   ],
   'Broken Signage': [
     'street sign','traffic sign','signboard','billboard','sign',
     'traffic light','stoplight','pole','flagpole','mailbox',
-    'birdhouse','beacon','parking meter','fire hydrant'
+    'birdhouse','beacon','parking meter','fire hydrant','totem pole','street name'
   ],
   'Damaged Drain Cover': [
     'manhole cover','manhole','grating','grille','iron','steel',
     'chain mail','radiator','worm fence','mesh','screen',
-    'grid','grate','metal','drain','sewer','lid'
+    'grid','grate','metal','drain','sewer','lid','sewerage'
   ],
   'Faded Road Markings': [
     'pavement','asphalt','road','highway','street','runway',
     'lane','crosswalk','zebra crossing','tennis court',
-    'basketball court','parking lot','concrete','sidewalk','stripe'
+    'basketball court','parking lot','concrete','sidewalk','stripe','marking','line'
   ]
 };
 
@@ -1285,11 +1285,9 @@ async function loadMobileNet() {
 }
 
 async function verifyDamageImage(img, reportType) {
-
   // ─────────────────────────────────────────────────
   // STAGE 1 — MobileNet check
   // ─────────────────────────────────────────────────
-  // Labels that immediately disqualify an image (clearly NOT road damage)
   const NEGATIVE_LABELS = [
     'person','man','woman','boy','girl','face','selfie','human',
     'cat','dog','bird','fish','animal','wildlife',
@@ -1297,58 +1295,58 @@ async function verifyDamageImage(img, reportType) {
     'bedroom','kitchen','bathroom','living room','office','indoor',
     'phone','laptop','computer','television','bottle','cup','glass',
     'tree','flower','grass','garden','sky','cloud','sunset','beach','ocean',
-    'car interior','dashboard','steering wheel','seat'
+    'car interior','dashboard','steering wheel','seat','closet','furniture'
   ];
 
-  let mnScore   = 0;    // positive boost from MobileNet
-  let mnLoaded  = false;
+  let mnScore = 0;
+  let mnLoaded = false;
+  let topPrediction = "";
 
   try {
     const mn = await loadMobileNet();
     const predictions = await mn.classify(img, 10);
     mnLoaded = true;
+    topPrediction = predictions[0].className.toLowerCase();
 
-    // Hard negative filter — top-3 predictions checked
+    // Hard negative filter
     for (let i = 0; i < Math.min(3, predictions.length); i++) {
       const label = predictions[i].className.toLowerCase();
-      const prob  = predictions[i].probability;
-      if (prob > 0.20) { // only reject if reasonably confident
+      const prob = predictions[i].probability;
+      if (prob > 0.15) { 
         for (const neg of NEGATIVE_LABELS) {
           if (label.includes(neg)) {
-            console.log(`AI REJECT (negative): "${label}" (${(prob*100).toFixed(1)}%)`);
+            console.log(`AI REJECT (negative): "${label}" (${(prob * 100).toFixed(1)}%)`);
             return false;
           }
         }
       }
     }
 
-    // Positive scoring — any label matching damage keywords
+    // Positive scoring
     const keywords = DAMAGE_KEYWORDS[reportType] || [];
-    for (const pred of predictions) {
+    predictions.forEach(pred => {
       const label = pred.className.toLowerCase();
-      for (const kw of keywords) {
-        if (label.includes(kw) || kw.includes(label.split(',')[0].trim())) {
+      keywords.forEach(kw => {
+        if (label.includes(kw)) {
           mnScore += pred.probability;
-          break;
         }
-      }
-    }
-    mnScore = Math.min(mnScore * 3, 1.0); // amplify (road damage is a rare class)
+      });
+    });
+    mnScore = Math.min(mnScore * 2, 1.0);
 
   } catch (e) {
     console.warn('MobileNet unavailable:', e.message);
-    // mnScore stays 0 — pixel gates must be very strong without AI
   }
 
   // ─────────────────────────────────────────────────
-  // STAGE 2 — Pixel analysis (mandatory gates)
+  // STAGE 2 — Deep Pixel & Texture Analysis
   // ─────────────────────────────────────────────────
   const canvas = document.createElement('canvas');
-  const W = 200, H = 200;
+  const W = 160, H = 160;
   canvas.width = W; canvas.height = H;
   const ctx2 = canvas.getContext('2d');
   ctx2.drawImage(img, 0, 0, W, H);
-  const data  = ctx2.getImageData(0, 0, W, H).data;
+  const data = ctx2.getImageData(0, 0, W, H).data;
   const count = W * H;
 
   let sumR = 0, sumG = 0, sumB = 0, sumSat = 0;
@@ -1361,88 +1359,81 @@ async function verifyDamageImage(img, reportType) {
     bright[pi] = (r + g + b) / 3;
   }
   const avgR = sumR/count, avgG = sumG/count, avgB = sumB/count;
-  const avgBr  = (avgR + avgG + avgB) / 3;
+  const avgBr = (avgR + avgG + avgB) / 3;
   const avgSat = sumSat / count;
+  
+  // Calculate Variance (Texture)
   let varSum = 0;
   for (let i = 0; i < count; i++) varSum += (bright[i] - avgBr) ** 2;
   const stdDev = Math.sqrt(varSum / count);
 
-  // Universal hard rejects (applies before any type-specific check)
-  if (avgBr < 10 || avgBr > 252) return false; // pitch black or pure white
-  if (stdDev < 5)                return false; // flat solid colour
+  // Calculate Edge Intensity (Roughness)
+  let edgeSum = 0;
+  for (let y = 1; y < H - 1; y++) {
+    for (let x = 1; x < W - 1; x++) {
+      const idx = y * W + x;
+      const gx = bright[idx+1] - bright[idx-1];
+      const gy = bright[idx+W] - bright[idx-W];
+      edgeSum += Math.sqrt(gx*gx + gy*gy);
+    }
+  }
+  const avgEdge = edgeSum / count;
 
-  // High-saturation images are almost certainly not road damage
-  // (road surfaces, drain covers, and markings are all low-saturation)
-  if (avgSat > 0.55) return false;
+  // Universal Hard Rejects
+  if (avgBr < 15 || avgBr > 245) return false; // Too dark or too bright
+  if (stdDev < 4) return false;               // Too flat (solid color)
+  if (avgSat > 0.45) return false;             // Too colorful (not road/concrete)
 
-  // Check if image is highly coloured (red/green/blue dominant = not road)
-  const maxCh = Math.max(avgR, avgG, avgB);
-  const minCh = Math.min(avgR, avgG, avgB);
-  const colorDominance = (maxCh - minCh) / (maxCh + 1);
-  if (colorDominance > 0.35) return false; // strongly coloured = not asphalt/metal
-
-  // Per-type mandatory pixel gates — ALL must pass for a positive pixel result
   let pxPass = false;
 
   if (reportType === 'Pothole') {
-    const isNeutral = Math.abs(avgR-avgG) < 35 && Math.abs(avgG-avgB) < 35; // grayish
-    const isLowSat  = avgSat < 0.25;
-    const hasDark   = bright.some(v => v < 60);   // dark patch = the hole
-    const hasGray   = bright.filter(v => v > 40 && v < 200).length / count > 0.45; // mostly road
-    pxPass = isNeutral && isLowSat && hasDark && hasGray;
+    // Potholes: Grayish, Low Sat, Rough Texture, Local Dark Spots
+    const isGray = Math.abs(avgR - avgG) < 30 && Math.abs(avgG - avgB) < 30;
+    const isRough = avgEdge > 4.5; // High edge intensity for broken asphalt
+    const hasDarkHole = bright.filter(v => v < 75).length / count > 0.05; // At least 5% is dark
+    const roadBackground = bright.filter(v => v > 80 && v < 200).length / count > 0.40; // 40% is mid-gray
+    pxPass = isGray && isRough && hasDarkHole && roadBackground;
 
   } else if (reportType === 'Broken Signage') {
-    let hiCon = 0, brightPx = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const mx = Math.max(data[i],data[i+1],data[i+2]);
-      const mn3 = Math.min(data[i],data[i+1],data[i+2]);
-      if (mx - mn3 > 70)                             hiCon++;
-      if ((data[i]+data[i+1]+data[i+2])/3 > 170)    brightPx++;
-    }
-    const hasContrast = hiCon/count > 0.10;
-    const hasBright   = brightPx/count > 0.05;
-    const notTooSat   = avgSat < 0.45;
-    pxPass = hasContrast && hasBright && notTooSat;
+    // Signage: Higher contrast, specific edge patterns
+    const hasContrast = stdDev > 15;
+    const hasBright = bright.filter(v => v > 180).length / count > 0.05;
+    pxPass = hasContrast && hasBright && avgSat < 0.45;
 
   } else if (reportType === 'Damaged Drain Cover') {
-    const isGray    = Math.abs(avgR-avgG) < 25 && Math.abs(avgG-avgB) < 25;
-    const isLowSat  = avgSat < 0.22;
-    const isDark    = avgBr < 165;
-    const hasTexture = stdDev > 10; // grating creates local contrast
-    pxPass = isGray && isLowSat && isDark && hasTexture;
+    // Metal: Gray, Low Sat, Very specific texture
+    const isMetalGray = Math.abs(avgR - avgG) < 20 && Math.abs(avgG - avgB) < 20;
+    const hasTexture = avgEdge > 6.0; // Very rough/patterned
+    pxPass = isMetalGray && hasTexture && avgBr < 170;
 
   } else if (reportType === 'Faded Road Markings') {
-    const isNeutral = Math.abs(avgR-avgG) < 30 && Math.abs(avgG-avgB) < 30;
-    const isLowSat  = avgSat < 0.18;
-    const isMidBr   = avgBr > 40 && avgBr < 200;
-    // Faded markings = mostly road gray with some brighter pixels
-    let fadedPx = 0;
-    for (let i = 0; i < count; i++) if (bright[i] > 150 && bright[i] < 240) fadedPx++;
-    const hasMarkings = fadedPx/count > 0.02 && fadedPx/count < 0.55;
-    pxPass = isNeutral && isLowSat && isMidBr && hasMarkings;
+    // Markings: Gray background with white/yellow streaks
+    const isRoad = avgBr > 50 && avgBr < 180;
+    const hasMarkingPx = bright.filter(v => v > 160).length / count > 0.03;
+    pxPass = isRoad && hasMarkingPx && avgSat < 0.25;
   }
 
   // ─────────────────────────────────────────────────
-  // STAGE 3 — Final decision
+  // STAGE 3 — Contextual Logic
   // ─────────────────────────────────────────────────
-  // Pixel gates MUST pass. MobileNet adds confidence on top.
+  // If MobileNet is extremely confident, we can trust it more.
+  // Otherwise, pixel gates must be strictly enforced.
+  
+  if (mnScore > 0.8) return true; // High AI confidence
+  
   if (!pxPass) {
-    console.log(`AI REJECT [${reportType}]: pixel gates failed (sat:${avgSat.toFixed(2)} br:${avgBr.toFixed(0)} std:${stdDev.toFixed(1)})`);
+    console.log(`AI REJECT [${reportType}]: Pixel analysis failed. (Edge:${avgEdge.toFixed(1)} Sat:${avgSat.toFixed(2)})`);
     return false;
   }
 
-  // With MobileNet loaded: require a minimum combined confidence
-  // Without MobileNet: pixel gates already passed, allow through
-  if (mnLoaded) {
-    // Negative result from MobileNet + no positive keywords = low confidence
-    const finalScore = 0.30 + mnScore * 0.70;
-    if (finalScore < 0.30) {
-      console.log(`AI REJECT [${reportType}]: MobileNet confidence too low (mnScore:${mnScore.toFixed(2)})`);
-      return false;
-    }
+  // Combined requirement
+  const confidence = (pxPass ? 0.5 : 0) + (mnScore * 0.5);
+  if (confidence < 0.4) {
+    console.log(`AI REJECT [${reportType}]: Low confidence score (${confidence.toFixed(2)})`);
+    return false;
   }
 
-  console.log(`AI PASS [${reportType}] mnLoaded:${mnLoaded} mnScore:${mnScore.toFixed(2)} pxPass:${pxPass}`);
+  console.log(`AI PASS [${reportType}] Score:${confidence.toFixed(2)} Edge:${avgEdge.toFixed(1)}`);
   return true;
 }
 
