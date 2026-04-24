@@ -201,18 +201,35 @@
           </div>
 
           <div class="form-group">
-            <label for="report-photo"><span data-i18n="label_photo">Upload Photo</span> <span class="optional" data-i18n="label_optional">(optional)</span></label>
+            <label><span data-i18n="label_photo">Upload Photo</span> <span class="optional" data-i18n="label_optional">(optional)</span></label>
+
+            <!-- Photo Source Tabs -->
+            <div class="photo-tabs" id="photo-tabs">
+              <button type="button" class="photo-tab active" id="tab-upload" onclick="switchPhotoTab('upload')">📁 Upload File</button>
+              <button type="button" class="photo-tab" id="tab-camera" onclick="switchPhotoTab('camera')">📸 Use Camera</button>
+            </div>
+
+            <!-- Upload Panel -->
             <div class="file-upload" id="file-upload-area">
               <input type="file" id="report-photo" accept="image/*" />
               <div class="file-upload-inner" id="file-upload-inner">
-                <span class="file-upload-icon">📷</span>
-                <span class="file-upload-text">Tap to take photo or choose from gallery</span>
+                <span class="file-upload-icon">📂</span>
+                <span class="file-upload-text">Tap to choose from gallery</span>
                 <span class="file-upload-hint">JPG, PNG, HEIC up to 10MB</span>
               </div>
-              <div class="photo-preview-wrap" id="photo-preview-wrap" style="display:none">
-                <img id="photo-preview" class="photo-preview" alt="Preview" />
-                <button type="button" class="photo-remove" id="photo-remove" title="Remove photo">✕</button>
-              </div>
+            </div>
+
+            <!-- Camera Panel (hidden by default) -->
+            <div class="camera-panel" id="camera-panel" style="display:none">
+              <button type="button" class="btn btn-outline btn-full" id="open-camera-btn" onclick="openCameraModal()">
+                📸 Open Camera
+              </button>
+            </div>
+
+            <!-- Shared preview (shown after either method) -->
+            <div class="photo-preview-wrap" id="photo-preview-wrap" style="display:none">
+              <img id="photo-preview" class="photo-preview" alt="Preview" />
+              <button type="button" class="photo-remove" id="photo-remove" title="Remove photo">✕</button>
             </div>
           </div>
 
@@ -530,6 +547,32 @@
     <div class="lightbox-content">
       <img id="lightbox-img" src="" alt="Enlarged Report Photo">
       <div class="lightbox-caption" id="lightbox-caption"></div>
+    </div>
+  </div>
+
+  <!-- CAMERA CAPTURE MODAL -->
+  <div class="camera-modal" id="camera-modal">
+    <div class="camera-modal-inner">
+      <div class="camera-header">
+        <div class="camera-title">📸 Camera</div>
+        <button type="button" class="camera-close-btn" id="camera-close-btn" onclick="closeCameraModal()">✕</button>
+      </div>
+      <div class="camera-viewfinder">
+        <video id="camera-video" autoplay playsinline muted></video>
+        <div class="camera-overlay-corner tl"></div>
+        <div class="camera-overlay-corner tr"></div>
+        <div class="camera-overlay-corner bl"></div>
+        <div class="camera-overlay-corner br"></div>
+        <div class="camera-hint-bar">Point at the road damage</div>
+      </div>
+      <canvas id="camera-canvas" style="display:none"></canvas>
+      <div class="camera-controls">
+        <button type="button" class="camera-flip-btn" id="camera-flip-btn" onclick="flipCamera()" title="Switch Camera">🔄</button>
+        <button type="button" class="camera-shutter" id="camera-shutter" onclick="capturePhoto()">
+          <div class="shutter-ring"></div>
+        </button>
+        <button type="button" class="camera-cancel-btn" onclick="closeCameraModal()">Cancel</button>
+      </div>
     </div>
   </div>
 

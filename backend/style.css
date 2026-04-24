@@ -932,6 +932,149 @@ textarea { resize: vertical; }
   to { transform: scale(1); opacity: 1; }
 }
 
+/* ===== PHOTO TABS ===== */
+.photo-tabs {
+  display: flex; gap: 8px; margin-bottom: 10px;
+}
+.photo-tab {
+  flex: 1; padding: 10px 14px;
+  background: var(--dark3); border: 1.5px solid rgba(255,255,255,0.1);
+  color: var(--gray-light); border-radius: 10px;
+  font-size: 0.88rem; font-weight: 600; cursor: pointer;
+  transition: all var(--transition);
+}
+.photo-tab:hover { border-color: rgba(245,196,0,0.4); color: var(--yellow); }
+.photo-tab.active {
+  background: rgba(245,196,0,0.12);
+  border-color: var(--yellow); color: var(--yellow);
+}
+
+/* Camera open button */
+.camera-panel .btn-full {
+  padding: 32px; font-size: 1rem;
+  border-style: dashed; letter-spacing: 0.02em;
+}
+
+/* ===== CAMERA MODAL ===== */
+.camera-modal {
+  display: none; position: fixed; inset: 0; z-index: 7000;
+  background: #000;
+  align-items: center; justify-content: center;
+}
+.camera-modal.show { display: flex; }
+
+.camera-modal-inner {
+  width: 100%; max-width: 520px;
+  display: flex; flex-direction: column;
+  height: 100%; max-height: 100dvh;
+  background: #0a0a0a;
+}
+
+/* Header */
+.camera-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.camera-title {
+  font-size: 1.1rem; font-weight: 700; color: var(--white);
+}
+.camera-close-btn {
+  background: rgba(255,255,255,0.1); border: none;
+  color: var(--white); width: 36px; height: 36px;
+  border-radius: 50%; font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.camera-close-btn:hover { background: var(--red); transform: rotate(90deg); }
+
+/* Viewfinder */
+.camera-viewfinder {
+  position: relative; flex: 1; overflow: hidden;
+  background: #000; display: flex; align-items: center; justify-content: center;
+}
+#camera-video {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+
+/* Corner bracket overlays */
+.camera-overlay-corner {
+  position: absolute; width: 28px; height: 28px;
+  border-color: var(--yellow); border-style: solid; z-index: 5;
+}
+.camera-overlay-corner.tl { top: 20px; left: 20px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.camera-overlay-corner.tr { top: 20px; right: 20px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.camera-overlay-corner.bl { bottom: 20px; left: 20px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.camera-overlay-corner.br { bottom: 20px; right: 20px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+/* Hint bar at bottom of viewfinder */
+.camera-hint-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  text-align: center; padding: 10px;
+  font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.6);
+  background: linear-gradient(transparent, rgba(0,0,0,0.5));
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+
+/* Controls bar */
+.camera-controls {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 32px; background: #0a0a0a;
+  flex-shrink: 0; gap: 12px;
+}
+
+/* Flip button */
+.camera-flip-btn {
+  background: rgba(255,255,255,0.12); border: none;
+  color: var(--white); width: 50px; height: 50px;
+  border-radius: 50%; font-size: 1.3rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.25s;
+}
+.camera-flip-btn:hover { background: rgba(255,255,255,0.2); transform: rotate(180deg); }
+.camera-flip-btn:active { transform: scale(0.9) rotate(180deg); }
+
+/* Shutter button */
+.camera-shutter {
+  width: 76px; height: 76px; border-radius: 50%;
+  background: var(--white); border: 4px solid rgba(255,255,255,0.3);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; box-shadow: 0 0 0 6px rgba(255,255,255,0.15);
+  position: relative;
+}
+.camera-shutter:hover { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(255,255,255,0.2); }
+.camera-shutter:active { transform: scale(0.93); background: var(--yellow); }
+
+.shutter-ring {
+  width: 60px; height: 60px; border-radius: 50%;
+  border: 3px solid rgba(0,0,0,0.15);
+  pointer-events: none;
+}
+
+/* Cancel / text button */
+.camera-cancel-btn {
+  background: none; border: none; color: var(--gray-light);
+  font-size: 0.88rem; font-weight: 600; cursor: pointer;
+  padding: 8px 12px; border-radius: 8px; transition: color 0.2s;
+  white-space: nowrap;
+}
+.camera-cancel-btn:hover { color: var(--red); }
+
+/* Flash effect on capture */
+@keyframes shutterFlash {
+  0% { opacity: 0; }
+  10% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+.camera-flash {
+  position: absolute; inset: 0; background: #fff;
+  pointer-events: none; z-index: 10;
+  animation: shutterFlash 0.35s ease-out forwards;
+}
+
 /* ===== MOBILE ===== */
 @media (max-width: 768px) {
   .nav-toggle { display: flex; }

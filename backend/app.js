@@ -1123,6 +1123,128 @@ if (photoRemoveBtn) {
 }
 
 // ───────────────────────────────────────────────
+// PHOTO SOURCE TABS (Upload / Camera)
+// ───────────────────────────────────────────────
+window.switchPhotoTab = function (tab) {
+  const uploadArea  = document.getElementById('file-upload-area');
+  const cameraPanel = document.getElementById('camera-panel');
+  const tabUpload   = document.getElementById('tab-upload');
+  const tabCamera   = document.getElementById('tab-camera');
+
+  if (tab === 'upload') {
+    uploadArea.style.display  = 'block';
+    cameraPanel.style.display = 'none';
+    tabUpload.classList.add('active');
+    tabCamera.classList.remove('active');
+  } else {
+    uploadArea.style.display  = 'none';
+    cameraPanel.style.display = 'block';
+    tabCamera.classList.add('active');
+    tabUpload.classList.remove('active');
+  }
+};
+
+// ───────────────────────────────────────────────
+// CAMERA CAPTURE ENGINE
+// ───────────────────────────────────────────────
+let cameraStream = null;
+let cameraFacingMode = 'environment'; // start with rear camera
+
+window.openCameraModal = async function () {
+  const modal = document.getElementById('camera-modal');
+  const video = document.getElementById('camera-video');
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  await startCameraStream(video);
+};
+
+async function startCameraStream(video) {
+  // Stop any existing stream first
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: cameraFacingMode },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    });
+    video.srcObject = cameraStream;
+  } catch (err) {
+    console.error('Camera error:', err);
+    let msg = 'Camera access denied. Please allow camera permissions and try again.';
+    if (err.name === 'NotFoundError') msg = 'No camera found on this device.';
+    alert('📸 ' + msg);
+    closeCameraModal();
+  }
+}
+
+window.flipCamera = async function () {
+  cameraFacingMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
+  const video = document.getElementById('camera-video');
+  // Mirror effect for selfie cam
+  video.style.transform = cameraFacingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+  await startCameraStream(video);
+};
+
+window.capturePhoto = function () {
+  const video    = document.getElementById('camera-video');
+  const canvas   = document.getElementById('camera-canvas');
+  const viewfinder = document.querySelector('.camera-viewfinder');
+
+  // Flash animation
+  const flash = document.createElement('div');
+  flash.className = 'camera-flash';
+  viewfinder.appendChild(flash);
+  setTimeout(() => flash.remove(), 400);
+
+  // Draw frame to canvas
+  canvas.width  = video.videoWidth  || 1280;
+  canvas.height = video.videoHeight || 720;
+  const ctx = canvas.getContext('2d');
+
+  // Flip horizontally if using front cam (mirror correction)
+  if (cameraFacingMode === 'user') {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  // Export as high-quality JPEG
+  photoDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+  // Show preview and close modal
+  document.getElementById('photo-preview').src = photoDataUrl;
+  document.getElementById('photo-preview-wrap').style.display = 'block';
+  document.getElementById('file-upload-inner').style.display  = 'none';
+
+  closeCameraModal();
+};
+
+window.closeCameraModal = function () {
+  const modal = document.getElementById('camera-modal');
+  const video = document.getElementById('camera-video');
+  modal.classList.remove('show');
+  document.body.style.overflow = 'auto';
+
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  if (video) video.srcObject = null;
+};
+
+// Close on backdrop click
+document.getElementById('camera-modal')?.addEventListener('click', function (e) {
+  if (e.target === this) closeCameraModal();
+});
+
+
+// ───────────────────────────────────────────────
 // AI PRIVACY & VISION ENGINE (v8.6 - Deep Scan)
 // ───────────────────────────────────────────────
 async function loadAIModels() {
